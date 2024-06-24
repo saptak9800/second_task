@@ -1,0 +1,322 @@
+//SAPTAK SINGHA 22BCE0985
+
+
+TASK 1
+
+1-Update the prices of the 3 most recently released products
+
+db.products1.find().sort({ releaseDate: -1 }).limit(3).forEach(function(doc) {
+    db.products1.updateOne(
+        { _id: doc._id },
+        { $set: { price: doc.price + 100 } }
+    );
+});
+
+2-Update products where the spec.ram is less than 8 and the spec.screen is greater than 7, setting their price to a specific value.
+
+db.products1.updateMany(
+    { "spec.ram": { $lt: 8 }, "spec.screen": { $gt: 7 } },
+    { $set: { price: 500 } }
+);
+
+
+3-Update products that have orange as one of their color options, setting their price to a different value based on their storage options
+
+db.products1.find({ color: "orange" }).forEach(function(doc) {
+    let newPrice;
+    if (doc.storage.includes(1024)) {
+        newPrice = 1500;
+    } else if (doc.storage.includes(512)) {
+        newPrice = 1200;
+    } else if (doc.storage.includes(256)) {
+        newPrice = 1000;
+    } else {
+        newPrice = 800;
+    }
+    db.products1.updateOne(
+        { _id: doc._id },
+        { $set: { price: newPrice } }
+    );
+});
+
+4-set the first 3 product's screen size as 9 after sorting in ascending order for which the price exists.
+
+db.products1.find({ price: { $exists: true } }).sort({ _id: 1 }).limit(3).forEach(function(doc) {
+    db.products1.updateOne(
+        { _id: doc._id },
+        { $set: { "spec.screen": 9 } }
+    );
+});
+
+5-Find the product with the highest price and update its price to 999
+
+var highestPricedProduct = db.products1.find().sort({ price: -1 }).limit(1).next();
+db.products1.updateOne(
+    { _id: highestPricedProduct._id },
+    { $set: { price: 999 } }
+);
+
+6-find name of product with highest price and update all its fields
+
+var highestPricedProduct = db.products1.find().sort({ price: -1 }).limit(1).next();
+db.products1.updateMany(
+    { name: highestPricedProduct.name },
+    { $set: { price: 999, releaseDate: ISODate("2023-01-01"), spec: { ram: 32, screen: 10, cpu: 4.0 }, color: ["red", "blue"], storage: [256, 512, 1024] } }
+);
+
+
+
+TASK-2
+
+1-Calculate the average screen size of products released after 2015, grouped by their storage options (sorted by storage size in descending order), and only include products with a screen size greater than 7 inches.
+
+db.products.aggregate([
+  {
+    $match: {
+      releaseDate: { $gt: ISODate("2015-01-01") },
+      "spec.screen": { $gt: 7 }
+    }
+  },
+  {
+    $group: {
+      _id: "$storage",
+      avgScreenSize: { $avg: "$spec.screen" }
+    }
+  },
+  {
+    $sort: { _id: -1 }
+  }
+])
+
+2-Find the total number of products for each color, sorted by the average price of products in that color group in descending order. Exclude products where the price is less than $600.
+
+db.products.aggregate([
+  {
+    $match: {
+      price: { $gte: 600 }
+    }
+  },
+  {
+    $group: {
+      _id: "$color",
+      totalProducts: { $sum: 1 },
+      avgPrice: { $avg: "$price" }
+    }
+  },
+  {
+    $sort: { avgPrice: -1 }
+  }
+])
+
+3-Find the product with the highest RAM size (spec.ram), its release date, and screen size (spec.screen).
+
+db.products.aggregate([
+  {
+    $sort: { "spec.ram": -1 }
+  },
+  {
+    $limit: 1
+  },
+  {
+    $project: {
+      _id: 0,
+      name: 1,
+      releaseDate: 1,
+      "spec.ram": 1,
+      "spec.screen": 1
+    }
+  }
+])
+
+4-find the avarage price of the top 3 items with the highest total quality sold
+
+db.products.aggregate([
+    { $sort: { quantitySold: -1 } },
+    { $limit: 3 },
+    {
+        $group: {
+            _id: null,
+            averagePrice: { $avg: "$price" }
+        }
+    },
+    {
+        $project: {
+            _id: 0,
+            averagePrice: 1
+        }
+    }
+]);
+
+5-compute maximum of quality*price and update it with minimum of quality*price
+
+const maxResult = db.products.aggregate([
+    { $addFields: { totalValue: { $multiply: ["$quantitySold", "$price"] } } },
+    { $group: { _id: null, maxValue: { $max: "$totalValue" } } }
+]).toArray();
+
+const maxValue = maxResult[0].maxValue;
+
+const minResult = db.products.aggregate([
+    { $addFields: { totalValue: { $multiply: ["$quantitySold", "$price"] } } },
+    { $group: { _id: null, minValue: { $min: "$totalValue" } } }
+]).toArray();
+
+const minValue = minResult[0].minValue;
+
+db.products.updateMany(
+    { $expr: { $eq: [{ $multiply: ["$quantitySold", "$price"] }, maxValue] } },
+    { $set: { totalValue: minValue } }
+);
+
+6-find only size of each item
+
+db.products.aggregate([
+    {
+        $project: {
+            name: 1,
+            size: "$storage"
+        }
+    }
+])
+
+
+Task 3
+
+
+1- The createIndex() Method 
+To create an index, you need to use 
+createIndex() method of MongoDB. 
+Syntax 
+The basic syntax of createIndex() method is as 
+follows(). 
+db.COLLECTION_NAME.createIndex({KEY:1}) 
+In createIndex() method you can pass multiple 
+fields, to create index on multiple fields. 
+
+db.mycol.createIndex({"title":1,"description":
+1}) 
+
+2- The dropIndex() method 
+You can drop a particular index using the 
+dropIndex() method of MongoDB. 
+Syntax 
+The basic syntax of DropIndex() method is as 
+follows(). 
+db.COLLECTION_NAME.dropIndex({KEY:1}) 
+
+3-The dropIndexes() method 
+This method deletes multiple (specified) 
+indexes on a collection. 
+Syntax 
+The basic syntax of DropIndexes() method is 
+as follows() − 
+db.COLLECTION_NAME.dropIndexes() 
+
+4-The getIndexes() method 
+This method returns the description of all the 
+indexes int the collection. 
+Syntax 
+Following is the basic syntax od the 
+getIndexes() method − 
+db.COLLECTION_NAME.getIndexes() 
+
+
+Type of indexes
+
+ 
+1. Single field Index: A single field index 
+means index on a single field of a 
+document. This index is helpful for fetching 
+data in ascending as well as descending 
+order. 
+Example: 
+db.students.createIndex({studentsId:1}) 
+
+2. Compound Index: We can combine 
+multiple fields for compound indexing and 
+that will help for searching or filtering 
+documents in that way. Or in other words, 
+the compound index is an index where a 
+single index structure holds multiple 
+references. 
+Example: 
+Here, we create a compound index on 
+studentAge: 1, studentName:1 
+db.students.createIndex({studentAge: 1, 
+studentName:1}) 
+
+3. Text Index: MongoDB supports query 
+operations that perform a text search of 
+string content. Text index allows us to find 
+the string content in the specified 
+collection. It can include any field that 
+contains string content or an array of string 
+items. A collection can contain at most one 
+text index. You are allowed to use text index 
+in the compound index.   
+Syntax: 
+db.<collection>.createIndex( { <field>: 
+“text”} ) 
+We can give exact phrases also for 
+searching by enclosing the search terms in double 
+quotes 
+db.<collectionname>.find( { $text: { 
+$search: “\”<Exact search term>\”” } } ) 
+As here enclosed in double quotes, the 
+search results contain only exact searched data. 
+In case, if we want to exclude a few texts in 
+our search term, then we can do as  
+db.<collectionname>.find( { $text: { $search: 
+“<search terms> -<not required search terms>” } } 
+) 
+Example: 
+In accessories collection we create text 
+index: 
+db.accessories.createIndex({name: "text", 
+description: "text"}) 
+db.accessories.find({$text:{$search: 
+"Input"}}) 
+
+
+Aggregate Functions 
+1-The aggregate() Method 
+For the aggregation in MongoDB, you should 
+use aggregate() method. 
+Syntax 
+Basic syntax of aggregate() method is as 
+follows − 
+db.COLLECTION_NAME.aggregate(AGGREGATE_O
+ PERATION) 
+
+$sum: Sums up the defined value from all 
+documents in the collection. 
+Example 
+db.mycol.aggregate([{$group : {_id : "$by_user", 
+num_tutorial : {$sum : "$likes"}}}]) 
+
+$avg: Calculates the average of all given values 
+from all documents in the collection. 
+Example 
+db.mycol.aggregate([{$group : {_id : "$by_user", 
+num_tutorial : {$avg : "$likes"}}}]) 
+
+$min: Gets the minimum of the corresponding 
+values from all documents in the collection. 
+Example 
+db.mycol.aggregate([{$group : {_id : "$by_user", 
+num_tutorial : {$min : "$likes"}}}]) 
+
+$max: Gets the maximum of the corresponding 
+values from all documents in the collection. 
+Example 
+db.mycol.aggregate([{$group : {_id : "$by_user", 
+num_tutorial : {$max : "$likes"}}}]) 
+
+$count: Passes a document to the next stage that 
+contains a count of the number of documents 
+input to the stage. 
+Example 
+db.collection.aggregate( [ 
+{ $group: { _id: null, myCount: { $sum: 1 } } }, 
+{ $project: { _id: 0 } } 
+] )
